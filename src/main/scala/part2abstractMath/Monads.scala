@@ -74,10 +74,37 @@ object Monads {
   def getPairs[M[_], A, B](ma: M[A], mb: M[B])(implicit monad: Monad[M]): M[(A, B)] =
     monad.flatMap(ma)(a => monad.map(mb)(b => (a, b)))
 
+  // extension methods - weirder imports - pure, flatMap
+  import cats.syntax.applicative._ // pure is here
+  val oneOption = 1.pure[Option] // implicit Monad[Option] will be use => Some(1)
+  val oneList = 1.pure[List] // List(1)
+
+  import cats.syntax.flatMap._ // flatMap is here
+  val oneOptionTransformed = oneOption.flatMap(x => (x + 1).pure[Option])
+
+  // TODO 3: implement the map method in MyMonad
+  // Monads extends Functors
+  val oneOptionMapped = Monad[Option].map(Option(2))(_ + 1)
+  import cats.syntax.functor._ // map is here
+  val oneOptionMapped2 = oneOption.map(_ + 2)
+  // for-comprehension
+  val composedOptionFor = for {
+    one <- 1.pure[Option]
+    two <- 2.pure[Option]
+  } yield one + two
+
+  // TODO 4: implement a shorter version of getPairs using for-comprehensions
+  def getPairsFor[M[_], A, B](ma: M[A], mb: M[B])(implicit monad: Monad[M]): M[(A, B)] =
+    // ma.flatMap(a => mb.map(b => (a, b)))
+    for {
+      a <- ma
+      b <- mb
+    } yield(a, b)
+
   def main(args: Array[String]): Unit = {
 
     println(getPairs(numbersList, charsList))
     println(getPairs(numberOption, charOption))
-    getPairs(numberFuture, charFuture).foreach(println)
+    getPairsFor(numberFuture, charFuture).foreach(println)
   }
 }
