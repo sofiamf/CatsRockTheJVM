@@ -4,6 +4,7 @@ object UsingMonads {
 
   import cats.Monad
   import cats.instances.list._
+  import cats.instances.option._
 
   val monadList = Monad[List] // fetch the implicit Monad[List]
   val aSimpleList = monadList.pure(2)
@@ -51,6 +52,12 @@ object UsingMonads {
     def issueRequest(connection: Connection, payload: String): M[String]
   }
 
+  def getResponse[M[_]](service: HttpService[M], payload: String)(implicit monad: Monad[M]): M[String] =
+    for {
+      conn <- service.getConnection(config)
+      response <- service.issueRequest(conn, payload)
+    } yield response
+
   // DO NOT CHANGE THE CODE
   /*
     Requirements:
@@ -62,8 +69,54 @@ object UsingMonads {
 
     TODO: provide a real implementation of HttpService using Try, Option, Future, Either
    */
-  def main(args: Array[String]): Unit = {
 
+  object OptionHttpService extends HttpService[Option] {
+    override def getConnection(cfg: Map[String, String]): Option[Connection] =
+      for {
+        h <- cfg.get("host")
+        p <- cfg.get("port")
+      } yield Connection(h, p)
+
+    override def issueRequest(connection: Connection, payload: String): Option[String] =
+      if (payload.length >= 20) None
+      else Some(s"Request ($payload) has been accepted")
+  }
+
+  val responseOption = OptionHttpService.getConnection(config).flatMap {
+    conn => OptionHttpService.issueRequest(conn, "Hello from the Option HTTP service")
+  }
+
+  val responseOptionFor = for {
+    conn <- OptionHttpService.getConnection(config)
+    response <- OptionHttpService.issueRequest(conn, "Hello, HTTP service")
+  } yield response
+
+  // TODO: implement another HttpService with LoadingOr
+  object AgressiveHttpService extends HttpService[ErrorOr] {
+    override def getConnection(cfg: Map[String, String]): ErrorOr[Connection] =
+      if(!cfg.contains("host") || !cfg.contains("port")) {
+        Left(new RuntimeException("Connection could not be established: invalid configuration"))
+      } else {
+        Right(Connection(cfg("host"), cfg("port")))
+      }
+
+    override def issueRequest(connection: Connection, payload: String): ErrorOr[String] =
+      if (payload.length >= 20) Left(new RuntimeException("Payload is too large"))
+      else Right(s"Request ($payload) has been accepted")
+  }
+
+  val errorOrResponse: ErrorOr[String] = for {
+    conn <- AgressiveHttpService.getConnection(config)
+    response <- AgressiveHttpService.issueRequest(conn, "Hello ErrorOr server")
+  } yield response
+
+  def main(args: Array[String]): Unit = {
+    println(responseOption)
+    println(errorOrResponse)
+    println("Hello ErrorOr server".length)
+
+    println(getResponse(OptionHttpService, "Hello Option"))
+    println(getResponse(AgressiveHttpService, "Hello, Error"))
   }
 
 }
