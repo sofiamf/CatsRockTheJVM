@@ -6,3 +6,4 @@
 | 11-04-24          | Introduction to Cats   |
 | 11-04-24          | Semigroups             |
 | 11-04-24          | Monoids                |
+| 13-04-24          | Functors               |
