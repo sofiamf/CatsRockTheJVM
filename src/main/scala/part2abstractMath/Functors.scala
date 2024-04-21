@@ -16,14 +16,14 @@ object Functors {
     import cats.Functor
     import cats.instances.list._ // includes Functor[List]
     val listFunctor = Functor[List]
-    val incrementedNumbers = listFunctor.map(List(1,2,3))(_ + 1) // List(2, 3, 4)
+    val incrementedNumbers: Seq[Int] = listFunctor.map(List(1,2,3))(_ + 1) // List(2, 3, 4)
 
     import cats.instances.option._ // includes Functor[Option]
     val optionFunctor = Functor[Option]
-    val incrementedOption = optionFunctor.map(Option(2))(_ + 1) // Some(3)
+    val incrementedOption: Option[Int] = optionFunctor.map(Option(2))(_ + 1) // Some(3)
 
     import cats.instances.try_._
-    val anIncrementedTry = Functor[Try].map(Try(42))(_ + 1) // Success(43)
+    val anIncrementedTry: Try[Int] = Functor[Try].map(Try(42))(_ + 1) // Success(43)
 
     // generalizing an API
     def do10xList(list: List[Int]): List[Int] = list.map(_ * 10)

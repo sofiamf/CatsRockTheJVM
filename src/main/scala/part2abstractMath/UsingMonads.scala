@@ -8,7 +8,7 @@ object UsingMonads {
 
   val monadList = Monad[List] // fetch the implicit Monad[List]
   val aSimpleList = monadList.pure(2)
-  val anExtendedList = monadList.flatMap(aSimpleList)(x => List(x, x + 1))
+  val anExtendedList: Seq[Int] = monadList.flatMap(aSimpleList)(x => List(x, x + 1))
   // applicable to Option, Try, Future
 
   // either is also a monad

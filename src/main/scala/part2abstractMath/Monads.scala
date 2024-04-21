@@ -80,7 +80,7 @@ object Monads {
   val oneList = 1.pure[List] // List(1)
 
   import cats.syntax.flatMap._ // flatMap is here
-  val oneOptionTransformed = oneOption.flatMap(x => (x + 1).pure[Option])
+  val oneOptionTransformed: Option[Int] = oneOption.flatMap(x => (x + 1).pure[Option])
 
   // TODO 3: implement the map method in MyMonad
   // Monads extends Functors

@@ -7,3 +7,6 @@
 | 11-04-24          | Semigroups             |
 | 11-04-24          | Monoids                |
 | 13-04-24          | Functors               |
+| 13-04-24          | Monads, part1          |
+| 20-04-24          | Monads, part2          |
+| 20-04-24          | Using Monads           |
