@@ -13,7 +13,8 @@ object MonadTransformers {
   import cats.data.OptionT
   import cats.instances.list._ // fetch an implicit OptionT[List]
 
-  val listOfNumberOptions: OptionT[List, Int] = OptionT(List(Option(1), Option(2)))
+  val listOfNumberOptions: OptionT[List, Int] = OptionT(List(Option(1), Option(2))) // this basically means a
+  // list of options of List (middle, left, right)
   val listOfCharOptions: OptionT[List, Char] = OptionT(List(Option('a'), Option('b'), Option.empty[Char]))
   val listOfTuples: OptionT[List, (Int, Char)] = for {
     char <- listOfCharOptions
