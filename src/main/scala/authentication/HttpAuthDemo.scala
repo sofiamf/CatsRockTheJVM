@@ -3,8 +3,6 @@ package authentication
 import authentication.HttpDigestDemo.middlewareResource
 import cats.effect.*
 import com.comcast.ip4s.{ipv4, port}
-import dev.profunktor.auth.JwtAuthMiddleware
-import dev.profunktor.auth.jwt.JwtSymmetricAuth
 import org.http4s.{AuthedRoutes, *}
 import org.http4s.implicits.*
 import org.http4s.dsl.io.*
@@ -14,7 +12,10 @@ import org.http4s.headers.Cookie
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.middleware.authentication.DigestAuth
 import org.http4s.server.middleware.authentication.DigestAuth.Md5HashedAuthStore
-import pdi.jwt.JwtAlgorithm
+import dev.profunktor.auth.JwtAuthMiddleware
+import dev.profunktor.auth.jwt.{JwtToken, JwtAuth}
+import dev.profunktor.given
+import pdi.jwt.{JwtClaim, JwtCirce, JwtAlgorithm}
 import io.circe.*
 import io.circe.parser.*
 
@@ -89,22 +90,24 @@ object HttpDigestDemo extends IOApp.Simple {
       case "daniel" =>
         for {
           user <- IO.pure(User(1L, "daniel"))
-          hash <- Md5HashedAuthStore.precomputeHash[IO]("daniel", "http://localhost:8080","rockthejvm")
+          hash <- Md5HashedAuthStore
+            .precomputeHash[IO]("daniel", "http://localhost:8080", "rockthejvm")
         } yield Some(user, hash)
 // need to return IO(Some(User(1, Daniel), hash of Daniel))
       case _ => IO.pure(None)
     }
 
-  val authStore = Md5HashedAuthStore(searchFunc)
-  val middleware: IO[AuthMiddleware[IO, User]] =
-    DigestAuth.applyF[IO, User]("http://localhost:8080/", authStore)
+  private val authStore = Md5HashedAuthStore(searchFunc)
+  private val middleware: IO[AuthMiddleware[IO, User]] =
+    DigestAuth.applyF[IO, User]("http://localhost:8080", authStore)
 
-  val authRoutes = AuthedRoutes.of[User, IO] {
+  private val authRoutes = AuthedRoutes.of[User, IO] {
     case GET -> Root / "welcome" as user =>
       Ok(s"Welcome, $user")
   }
 
-  val middlewareResource = Resource.eval(middleware)
+  val middlewareResource: Resource[IO, AuthMiddleware[IO, User]] =
+    Resource.eval(middleware)
 
   val serverResource = for {
     mw <- middlewareResource
@@ -136,22 +139,26 @@ object HttpSessionDemo extends IOApp.Simple {
       s"$user:$date".getBytes(StandardCharsets.UTF_8)
     )
 
-  def getUser(token: String): Option[String] = Try(new String(Base64.getDecoder.decode(token)).split(":")(0)).toOption
+  def getUser(token: String): Option[String] = Try(
+    new String(Base64.getDecoder.decode(token)).split(":")(0)
+  ).toOption
 
-  val authRoutes = AuthedRoutes.of[User, IO] {
+  // Base64.getDecoder.decode(token).split(":")(0)
+
+  private val authRoutes = AuthedRoutes.of[User, IO] {
     case GET -> Root / "welcome" as user => // localhost:8080/welcome/daniel
       Ok(s"Welcome, $user").map(
         _.addCookie(
           ResponseCookie(
-            "sessionCookie",
+            "sessioncookie",
             setToken(user.name, today),
-            maxAge = Some(3600)
+            maxAge = Some(24 * 3600)
           )
         )
       )
   }
 
-  val searchFunc: String => IO[Option[(User, String)]] =
+  private val searchFunc: String => IO[Option[(User, String)]] =
     // query
     {
       case "daniel" =>
@@ -166,46 +173,48 @@ object HttpSessionDemo extends IOApp.Simple {
 
   val authStore = Md5HashedAuthStore(searchFunc)
   val middleware: IO[AuthMiddleware[IO, User]] =
-    DigestAuth.applyF[IO, User]("http://localhost:8080/", authStore)
-  val middlewareResource = Resource.eval(middleware)
+    DigestAuth.applyF[IO, User]("http://localhost:8080", authStore)
+  private val middlewareResource = Resource.eval(middleware)
 
   // digest auth end
 
-  val cookieAccessRoutes = HttpRoutes.of[IO] {
-    case GET -> Root / "statement" =>
-      Ok(s"Here is your statement")
+  private val cookieAccessRoutes = HttpRoutes.of[IO] {
+    case GET -> Root / "statement" / user =>
+      Ok(s"Here is your statement, $user!")
     case GET -> Root / "logout" =>
-      Ok("Logged out").map(_.removeCookie("sessionCookie"))
+      Ok("Logged out").map(_.removeCookie("sessioncookie"))
   }
 
-  def checkSessionCookie(cookie: Cookie): Option[RequestCookie] = {
-    cookie.values.toList.find(_.name == "sessionCookie")
+  private def checkSessionCookie(cookie: Cookie): Option[RequestCookie] = {
+    cookie.values.toList.find(_.name == "sessioncookie")
   }
 
-  def modifyPath(user: String): Path =
+  private def modifyPath(user: String): Path =
     Uri.Path.unsafeFromString(s"/statement/$user")
 
   // prove that the user has a cookie
-  def cookieCheckerApp(app: HttpRoutes[IO]): HttpRoutes[IO] = Kleisli { req =>
-    val authHeader: Option[Cookie] = req.headers.get[Cookie]
-    OptionT.liftF(authHeader.fold(Ok("No token")) { cookie =>
-      checkSessionCookie(cookie).fold(Ok("Invalid token")) { token =>
-        getUser(token.content).fold(Ok("Invalid token")) { user =>
-          // value that we want
-          app.orNotFound.run(req.withPathInfo(modifyPath(user)))
-        }
-      }
-    })
+  private def cookieCheckerApp(app: HttpRoutes[IO]): HttpRoutes[IO] = Kleisli {
+    req =>
+      val authHeader: Option[Cookie] = req.headers.get[Cookie]
+      OptionT.liftF(authHeader.fold(Ok("No cookies")) {
+        cookie => // wrap that into a response - a monad transformer
+          checkSessionCookie(cookie).fold(Ok("No token")) { token =>
+            getUser(token.content).fold(Ok("Invalid token")) { user =>
+              // value that we want
+              app.orNotFound.run(req.withPathInfo(modifyPath(user)))
+            }
+          }
+      })
   }
 
-  val routerResource = middlewareResource.map { mw =>
+  private val routerResource = middlewareResource.map { mw =>
     Router(
       "/login" -> mw(authRoutes), // login endpoint (unauthed)
       "/" -> cookieCheckerApp(cookieAccessRoutes) // authed
     )
   }
 
-  val serverResource = for {
+  private val serverResource = for {
     router <- routerResource
     server <-
       EmberServerBuilder
@@ -220,22 +229,33 @@ object HttpSessionDemo extends IOApp.Simple {
     serverResource.use(_ => IO.never).void
 }
 
-// 4 - JWT
-/*object JwtSessionDemo extends IOApp.Simple {
+// 4 - JWT - json web tokens
+/*
+string encoded as jsons - json object can contain a variety of fields to authorization, for role based access control
+hard code how to build a JWT
+encode them as cookies
+TSEC - works well with http4s
+we are using profuncton based on claims
+ */
+object JwtSessionDemo extends IOApp.Simple {
+
+  private val today: String = LocalTime.now().toString
+  private def setToken(user: String, date: String) =
+    Base64.getEncoder.encodeToString(
+      s"$user:$date".getBytes(StandardCharsets.UTF_8)
+    )
 
   // "login" endpoints
-  val authRoutes = AuthedRoutes.of[User, IO] {
+  private val authRoutes = AuthedRoutes.of[User, IO] {
     case GET -> Root / "welcome" as user => // localhost:8080/welcome/daniel
-      setToken(user.name, new StringBuilder)
       Ok(s"Welcome, $user").map(
         _.addCookie(
-          ResponseCookie("token", token)
+            ResponseCookie("token", token)
         )
       )
   }
 
   case class TokenPayload(user: String, permsLevel: String)
-
   object TokenPayload {
     given decoder: Decoder[TokenPayload] = Decoder.instance { hCursor =>
       for {
@@ -247,45 +267,55 @@ object HttpSessionDemo extends IOApp.Simple {
 
   // JWT logic
   // claims
-  def claim(user: String, permsLevel: String) = JwtClaim(
+  def claim(user: String, permsLevel: String): JwtClaim = JwtClaim(
     content = s"""
         |{
         |  "user": "$user",
         |  "level: "$permsLevel"
-        |  }
+        |}
         |""".stripMargin,
-    expiration = Some(Instant.now().plusSeconds(10 * 24 * 3600).getEpochSecond),
+    expiration = Some(Instant.now.plusSeconds(157784760).getEpochSecond/*Instant.now().plusSeconds(10 * 24 * 3600).getEpochSecond*/),
     issuedAt = Some(Instant.now().getEpochSecond)
   )
 
   val key = "tobeconfigured"
-  val algo = JwtAlgorithm.HS256
-  val token = JwtCirce.encode(claim, key, algo) // build a manual JWT
+  private val algo = JwtAlgorithm.HS256
+  private val token = JwtCirce.encode(claim("daniel", "basic"), key, algo) // build a manual JWT
 
-  // "database"
   val database = Map("daniel" -> User(1L, "Daniel"))
 
+//  private val authorizedFunction: JwtToken => JwtClaim => IO[Option[User]] =
+//    token =>
+//      claim =>
+//        decode[TokenPayload](claim.content) match {
+//          case Left(_)        => IO(None)
+//          case Right(payload) => IO(database.get(payload.user))
+//        }
+
   val authorizedFunction: JwtToken => JwtClaim => IO[Option[User]] =
-    token => claim => decode[TokenPayload] match {
-      case Left(_) => IO(None)
-      case Right(payload) => IO(database.get(payload.user))
-    }
+    (token: JwtToken) =>
+      (claim: JwtClaim) =>
+        decode[TokenPayload](claim.content) match {
+          case Right(payload) => IO(database.get(payload.user))
+          case Left(_)        => IO(None)
+        }
 
-  val middleware = JwtAuthMiddleware[IO, User](JwtAuth.hmMAC(key, algo), authorizedFunction)
+  private val jwtMiddleware =
+    JwtAuthMiddleware[IO, User](JwtAuth.hmac(key, algo), authorizedFunction)
 
-  val routerResource = middlewareResource.map { mw =>
+  private val routerResource = middlewareResource.map { mw =>
     Router(
       "/login" -> mw(authRoutes), // login endpoint (unauthed)
-      "/guarded" -> middleware(guardedRoutes) // authed
+      "/guarded" -> jwtMiddleware(guardedRoutes) // authed
     )
   }
 
-  val guardedRoutes = AuthedRoutes.of[User, IO] {
+  private val guardedRoutes = AuthedRoutes.of[User, IO] {
     case GET -> Root / "secret" as user => // will now be parsed from the JWT
       Ok(s"THIS IS THE SECRET, $user")
   }
 
-  val serverResource = for {
+  private val serverResource = for {
     router <- routerResource
     server <-
       EmberServerBuilder
@@ -298,4 +328,4 @@ object HttpSessionDemo extends IOApp.Simple {
 
   override def run =
     serverResource.use(_ => IO.never).void
-}*/
+}
