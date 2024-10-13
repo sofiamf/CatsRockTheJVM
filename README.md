@@ -12,3 +12,12 @@
 | 20-04-24          | Using Monads                              |
 | 21-04-24          | Custom Monads (i should revisit this)     |
 | 21-04-24          | Monad Transformers (i should revisit this |
+
+Single Lessons RockTheJVM
+| 2024              | Rock the jvm blog                          |
+| 13-10-24          | OAuth authentication                       |
+https://www.youtube.com/watch?v=NZwnZhwVPrs
+|13-10-24           | Passwords, Digests, Sessions, JWTs         |
+https://www.youtube.com/watch?v=DxZIuvSDvyA
+TODO: Determine what is the issue with decoding the token Payload - authorizedFunction
+

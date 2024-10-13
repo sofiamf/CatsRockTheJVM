@@ -14,7 +14,6 @@ import org.http4s.server.middleware.authentication.DigestAuth
 import org.http4s.server.middleware.authentication.DigestAuth.Md5HashedAuthStore
 import dev.profunktor.auth.JwtAuthMiddleware
 import dev.profunktor.auth.jwt.{JwtToken, JwtAuth}
-import dev.profunktor.given
 import pdi.jwt.{JwtClaim, JwtCirce, JwtAlgorithm}
 import io.circe.*
 import io.circe.parser.*
@@ -23,7 +22,7 @@ import java.nio.charset.StandardCharsets
 import java.time.LocalTime
 import scala.util.Try
 import cats.data.*
-import org.http4s.server.{AuthMiddleware, Router}
+import org.http4s.server.{AuthMiddleware}
 
 import java.time.Instant
 import java.util.Base64
@@ -255,13 +254,13 @@ object JwtSessionDemo extends IOApp.Simple {
       )
   }
 
-  case class TokenPayload(user: String, permsLevel: String)
+  case class TokenPayload(user: String, level: String)
   object TokenPayload {
     given decoder: Decoder[TokenPayload] = Decoder.instance { hCursor =>
       for {
         user <- hCursor.get[String]("user")
-        permsLevel <- hCursor.get[String]("level")
-      } yield TokenPayload(user, permsLevel)
+        level <- hCursor.get[String]("level")
+      } yield TokenPayload(user, level)
     }
   }
 
@@ -274,7 +273,7 @@ object JwtSessionDemo extends IOApp.Simple {
         |  "level: "$permsLevel"
         |}
         |""".stripMargin,
-    expiration = Some(Instant.now.plusSeconds(157784760).getEpochSecond/*Instant.now().plusSeconds(10 * 24 * 3600).getEpochSecond*/),
+    expiration = Some(Instant.now().plusSeconds(10 * 24 * 3600).getEpochSecond),
     issuedAt = Some(Instant.now().getEpochSecond)
   )
 
@@ -282,22 +281,11 @@ object JwtSessionDemo extends IOApp.Simple {
   private val algo = JwtAlgorithm.HS256
   private val token = JwtCirce.encode(claim("daniel", "basic"), key, algo) // build a manual JWT
 
-  val database = Map("daniel" -> User(1L, "Daniel"))
-
-//  private val authorizedFunction: JwtToken => JwtClaim => IO[Option[User]] =
-//    token =>
-//      claim =>
-//        decode[TokenPayload](claim.content) match {
-//          case Left(_)        => IO(None)
-//          case Right(payload) => IO(database.get(payload.user))
-//        }
-
-  val authorizedFunction: JwtToken => JwtClaim => IO[Option[User]] =
-    (token: JwtToken) =>
-      (claim: JwtClaim) =>
-        decode[TokenPayload](claim.content) match {
+  val database = Map("daniel" -> User(123, "daniel"))
+  private val authorizedFunction: JwtToken => JwtClaim => IO[Option[User]] =
+    token => claim => decode[TokenPayload] (claim.content) match {
+          case Left(error)        => IO(Some(User(1L, error.getMessage)))
           case Right(payload) => IO(database.get(payload.user))
-          case Left(_)        => IO(None)
         }
 
   private val jwtMiddleware =
