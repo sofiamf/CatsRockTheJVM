@@ -1,6 +1,6 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
-ThisBuild / scalaVersion := "3.4.2"
+ThisBuild / scalaVersion := "3.3.5"
 
 val Http4sVersion = "0.23.27"
 val JwtHtpp4sVersion = "1.2.3"
