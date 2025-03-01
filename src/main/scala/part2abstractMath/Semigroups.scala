@@ -9,10 +9,10 @@ object Semigroups {
   import cats.Semigroup
   import cats.instances.int._
   import cats.instances.string._
-  private val naturalIntSemiGroup = Semigroup[Int]
-  private val intCombination = naturalIntSemiGroup.combine(2, 46)
-  private val naturalStringSemigroup = Semigroup[String]
-  private val stringCombination = naturalStringSemigroup.combine("I love", "Cats") // concatenation
+  private val naturalIntSemiGroup: Semigroup[Int] = Semigroup[Int]
+  private val intCombination: Int = naturalIntSemiGroup.combine(2, 46)
+  private val naturalStringSemigroup: Semigroup[String] = Semigroup[String]
+  private val stringCombination: String = naturalStringSemigroup.combine("I love", "Cats") // concatenation
 
   // specific API
   val test: (Int, Int) => Int = naturalIntSemiGroup.combine
@@ -27,8 +27,8 @@ object Semigroups {
   implicit val expenseSemiGroup: Semigroup[Expense] = Semigroup.instance[Expense]{(e1, e2) => Expense(Math.max(e1.id, e2.id), e1.amount + e2.amount)}
 
   // extension methods from Semigroup
-  private val aIntSum = 2 |+| 3 // requires the presence of an implicit Semigroup[Int]
-  private val aStringConcat = "we like " |+| "semigroups"
+  private val aIntSum: Int = 2 |+| 3 // requires the presence of an implicit Semigroup[Int]
+  private val aStringConcat: String = "we like " |+| "semigroups"
 
   // TODO 2: implement reduceThings2 with the |+|
   def reduceThings2[T](list: List[T])(implicit  semigroup: Semigroup[T]): T = list.reduce(_ |+| _)
