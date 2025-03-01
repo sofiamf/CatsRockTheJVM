@@ -22,12 +22,12 @@ object TypeClasses {
   }
 
   // part 3 - after some API
-  def convertListToJSON[T](list: List[T])(implicit serializer: JSONSerializer[T]): String =
+  private def convertListToJSON[T](list: List[T])(implicit serializer: JSONSerializer[T]): String =
     list.map(v => serializer.toJson(v)).mkString("[", ",", "]")
 
   // part 4 - extending the existing types via extension methods
   object JSONSyntax {
-    implicit class JSONSerialiazer[T](value: T)(implicit serializer: JSONSerializer[T]) {
+    implicit class JSONSerializable[T](value: T)(implicit serializer: JSONSerializer[T]) {
       def toJson: String = serializer.toJson(value)
     }
   }

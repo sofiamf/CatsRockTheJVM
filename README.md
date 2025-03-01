@@ -12,6 +12,10 @@
 | 20-04-24          | Using Monads                              |
 | 21-04-24          | Custom Monads (i should revisit this)     |
 | 21-04-24          | Monad Transformers (i should revisit this |
+| 26-02-25          | Type classes                              |
+| 26-02-25          | Introduction to cats                      |
+| 26-02-25          | Type classes                              |
+| 01-03-25          | Semigroups                                |
 
 Single Lessons RockTheJVM
 | 2024              | Rock the jvm blog                          |

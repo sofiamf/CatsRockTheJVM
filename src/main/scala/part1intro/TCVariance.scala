@@ -2,12 +2,11 @@ package part1intro
 
 object TCVariance {
 
-  import cats.Eq
   import cats.instances.int._ // Eq[Int] TC instances
-  import cats.instances.option._ // construct a Eq[Option[Int]] TC instances
+  import cats.instances.option._ // construct an Eq[Option[Int]] TC instances
   import cats.syntax.eq._
 
-  val aComparison = Option(2) === Option(3)
+  val aComparison: Boolean = Option(2) === Option(3)
   // val anInvalidComparison = Some(2) === None // Eq[Some[Int]] not found
 
   // variance
@@ -28,7 +27,7 @@ object TCVariance {
   // contravariant TC
   trait SoundMaker[-T]
   implicit object AnimalSoundMaker extends SoundMaker[Animal]
-  def makeSound[T](implicit soundMaker: SoundMaker[T]): Unit = println("wow") // implementation not important
+  private def makeSound[T](implicit soundMaker: SoundMaker[T]): Unit = println("wow") // implementation not important
   makeSound[Animal] // ok - TC instance defined above
   makeSound[Cat] // ok - TC instance for Animal is also applicable to Cats
 
@@ -48,7 +47,7 @@ object TCVariance {
   implicit object CatShow extends AnimalShow[Cat] {
     override def show: String = "so many cats!"
   }
-  def organizeShow[T](implicit event: AnimalShow[T]): String = event.show
+  private def organizeShow[T](implicit event: AnimalShow[T]): String = event.show
   // rule 2: covariant TCs will always use the more specific TC instance for that type
   // but may confuse the compiler if the general TC is also present
 
