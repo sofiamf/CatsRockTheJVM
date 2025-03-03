@@ -16,6 +16,14 @@
 | 26-02-25          | Introduction to cats                      |
 | 26-02-25          | Type classes                              |
 | 01-03-25          | Semigroups                                |
+| 01-03-25          | Monoids                                   |
+| 01-03-25          | Functors                                  |
+| 01-03-25          | Monads, Part1                             |
+| 01-03-25          | Monads, Part2                             |
+| 03-03-25          | Using Monads                              |
+| 03-03-25          | Custom Monads                             |
+| 03-03-25          | Monad Transformers                        |
+
 
 Single Lessons RockTheJVM
 | 2024              | Rock the jvm blog                          |

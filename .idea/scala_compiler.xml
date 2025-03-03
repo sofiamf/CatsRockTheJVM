@@ -5,7 +5,7 @@
       <parameters>
         <parameter value="-Xsemanticdb" />
         <parameter value="-semanticdb-target" />
-        <parameter value="$PROJECT_DIR$/target/scala-3.4.2/meta" />
+        <parameter value="$PROJECT_DIR$/target/scala-3.3.5/meta" />
       </parameters>
     </profile>
   </component>
